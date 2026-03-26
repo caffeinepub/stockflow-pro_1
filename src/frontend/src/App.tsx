@@ -60,6 +60,7 @@ import type {
   TxRecord,
 } from "./declarations/backend.did";
 import { useActor } from "./hooks/useActor";
+import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import type {
   AppUser,
   Business,
@@ -354,6 +355,11 @@ function fromBackendTxRecord(e: TxRecord): Transaction {
 
 export default function App() {
   const { actor } = useActor();
+  const {
+    identity,
+    login: loginWithII,
+    isInitializing: iiInitializing,
+  } = useInternetIdentity();
 
   // Load persisted UI config once from localStorage
   const savedConfig = (() => {
@@ -1404,6 +1410,37 @@ export default function App() {
     activeBusinessId,
     currentUser,
   ]);
+
+  // Show II login screen if not authenticated with Internet Identity
+  if (!iiInitializing && !identity) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md border border-gray-100">
+          <div className="flex justify-center mb-6">
+            <div className="bg-blue-600 p-4 rounded-2xl shadow-lg shadow-blue-200 text-white">
+              <Package size={40} />
+            </div>
+          </div>
+          <h1 className="text-3xl font-black text-center text-gray-900 mb-2 tracking-tighter">
+            StockFlow Pro
+          </h1>
+          <p className="text-center text-gray-500 mb-8 text-xs font-bold uppercase tracking-widest">
+            Inventory Management
+          </p>
+          <button
+            type="button"
+            onClick={loginWithII}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg transition-transform active:scale-95 uppercase tracking-widest text-xs"
+          >
+            Login with Internet Identity
+          </button>
+          <p className="text-center text-gray-400 text-[10px] mt-4 font-medium">
+            Secure, decentralized login on the Internet Computer
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentUser && !actor)
     return (

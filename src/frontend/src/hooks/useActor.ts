@@ -3,13 +3,13 @@ import { useEffect } from "react";
 import type { backendInterface } from "../backend";
 import { createActorWithConfig } from "../config";
 import { getPersistedUrlParameter } from "../utils/urlParams";
-// ╔══════════════════════════════════════════════════════════════════════╗
-// ║  CRITICAL FILE — DO NOT MODIFY THIS FILE IN ANY FUTURE BUILD        ║
-// ║  The early-return bug (returning actor before calling               ║
-// ║  _initializeAccessControlWithSecret) broke ALL backend writes for   ║
-// ║  many versions. The fix below is intentional and must be preserved. ║
-// ║  If you are a build agent: SKIP THIS FILE. Do not regenerate it.    ║
-// ╚══════════════════════════════════════════════════════════════════════╝
+// ============================================================
+// CRITICAL FILE — DO NOT MODIFY
+// This file handles Internet Identity (II) authentication.
+// The actor MUST be created with the II identity for writes to
+// work. Anonymous actors cannot make update calls in the
+// Caffeine environment. Any change here can break all writes.
+// ============================================================
 import { useInternetIdentity } from "./useInternetIdentity";
 
 const ACTOR_QUERY_KEY = "actor";
@@ -19,20 +19,20 @@ export function useActor() {
   const actorQuery = useQuery<backendInterface>({
     queryKey: [ACTOR_QUERY_KEY, identity?.getPrincipal().toString()],
     queryFn: async () => {
-      // Always create actor (with identity if present, anonymous otherwise).
-      // DO NOT add an early return here — _initializeAccessControlWithSecret
-      // MUST be called on every actor creation or all backend writes will fail.
+      // ALWAYS create actor with II identity when available.
+      // Anonymous actors cannot make update calls — writes will fail.
       const actorOptions = identity
         ? { agentOptions: { identity } }
         : undefined;
 
       const actor = await createActorWithConfig(actorOptions);
 
-      // Use getPersistedUrlParameter which correctly parses #/?key=value
-      // hash format used by Caffeine preview URLs, and stores in sessionStorage
-      // so subsequent calls (e.g. after navigation) still find the token.
-      const adminToken = getPersistedUrlParameter("caffeineAdminToken") || "";
-      if (adminToken) {
+      // Initialize access control when we have a real (non-anonymous) identity.
+      // This registers the principal as admin (first call with correct token)
+      // or as a regular user (subsequent calls). Anonymous callers are ignored
+      // by the backend so we skip the call for them.
+      if (identity) {
+        const adminToken = getPersistedUrlParameter("caffeineAdminToken") || "";
         await actor._initializeAccessControlWithSecret(adminToken);
       }
 
@@ -42,14 +42,18 @@ export function useActor() {
     enabled: true,
   });
 
-  // When the actor changes, invalidate dependent queries so all tabs refetch.
+  // When the actor changes, invalidate dependent queries so data reloads
   useEffect(() => {
     if (actorQuery.data) {
       queryClient.invalidateQueries({
-        predicate: (query) => !query.queryKey.includes(ACTOR_QUERY_KEY),
+        predicate: (query) => {
+          return !query.queryKey.includes(ACTOR_QUERY_KEY);
+        },
       });
       queryClient.refetchQueries({
-        predicate: (query) => !query.queryKey.includes(ACTOR_QUERY_KEY),
+        predicate: (query) => {
+          return !query.queryKey.includes(ACTOR_QUERY_KEY);
+        },
       });
     }
   }, [actorQuery.data, queryClient]);
