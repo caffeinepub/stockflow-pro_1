@@ -187,6 +187,7 @@ actor {
   stable var deliveries        : [DeliveryEntry]    = [];
   stable var sales             : [SaleEntry]        = [];
   stable var txHistory         : [TxRecord]         = [];
+  stable var appSettingsBlob   : Text               = "";
 
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -706,6 +707,15 @@ actor {
 
   public shared ({ caller }) func getCurrentUser() : async Text {
     caller.toText()
+  };
+
+
+  public func getAppSettings() : async Text {
+    appSettingsBlob
+  };
+
+  public func saveAppSettings(blob : Text) : async () {
+    appSettingsBlob := blob
   };
 
 };

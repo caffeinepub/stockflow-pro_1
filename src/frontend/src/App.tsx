@@ -652,6 +652,7 @@ export default function App() {
           backendTxHistory,
           backendTransfers,
           backendSales,
+          backendAppSettings,
         ] = await Promise.all([
           (actor as any).getTransitEntries(resolvedBusinessId),
           (actor as any).getQueueEntries(resolvedBusinessId),
@@ -661,6 +662,7 @@ export default function App() {
           (actor as any).getTxHistory(resolvedBusinessId),
           (actor as any).getTransfers(resolvedBusinessId),
           (actor as any).getSales(resolvedBusinessId),
+          (actor as any).getAppSettings(),
         ]);
         setTransitGoods(
           (backendTransit as BackendTransitEntry[]).map(fromBackendTransit),
@@ -722,6 +724,21 @@ export default function App() {
             const newSales = saleTxns.filter((t) => !existingSaleIds.has(t.id));
             return [...prev, ...newSales];
           });
+        }
+        // Load persisted app settings from backend (overrides localStorage)
+        if (backendAppSettings && (backendAppSettings as string).length > 0) {
+          try {
+            const bs = JSON.parse(backendAppSettings as string);
+            if (bs.tabNames) setTabNames(bs.tabNames);
+            if (bs.fieldLabels) setFieldLabels(bs.fieldLabels);
+            if (bs.requiredFields) setRequiredFields(bs.requiredFields);
+            if (bs.minStockThreshold != null)
+              setMinStockThreshold(bs.minStockThreshold);
+            if (bs.thresholdExcludedItems)
+              setThresholdExcludedItems(bs.thresholdExcludedItems);
+          } catch {
+            // malformed blob — ignore, keep localStorage values
+          }
         }
         setIsBackendReady(true);
       } catch (e) {
@@ -1039,6 +1056,19 @@ export default function App() {
         thresholdExcludedItems,
       }),
     );
+    // Also persist settings to the Motoko backend so they survive device changes and localStorage clears
+    if (actor && isBackendReady) {
+      const blob = JSON.stringify({
+        tabNames,
+        fieldLabels,
+        requiredFields,
+        minStockThreshold,
+        thresholdExcludedItems,
+      });
+      (actor as any)
+        .saveAppSettings(blob)
+        .catch((e: unknown) => console.warn("Settings save failed:", e));
+    }
   }, [
     fieldLabels,
     requiredFields,
@@ -1049,6 +1079,8 @@ export default function App() {
     customColumns,
     minStockThreshold,
     thresholdExcludedItems,
+    actor,
+    isBackendReady,
   ]);
 
   // setTransactionsWithBackend: local state only.

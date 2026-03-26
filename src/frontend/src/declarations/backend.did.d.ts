@@ -217,6 +217,8 @@ export interface _SERVICE {
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCategories' : ActorMethod<[], Array<Category>>,
   'getCurrentUser' : ActorMethod<[], string>,
+  'getAppSettings' : ActorMethod<[], string>,
+  'saveAppSettings' : ActorMethod<[string], undefined>,
   'getDeliveries' : ActorMethod<[string], Array<DeliveryEntry>>,
   'getGodowns' : ActorMethod<[], Array<Godown>>,
   'getInventory' : ActorMethod<[string], Array<InventoryItem>>,

@@ -313,6 +313,8 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getCategories(): Promise<Array<Category>>;
     getCurrentUser(): Promise<string>;
+    getAppSettings(): Promise<string>;
+    saveAppSettings(blob: string): Promise<void>;
     getDeliveries(businessId: string): Promise<Array<DeliveryEntry>>;
     getGodowns(): Promise<Array<Godown>>;
     getInventory(businessId: string): Promise<Array<InventoryItem>>;
@@ -803,6 +805,32 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getCurrentUser();
             return result;
+        }
+    }
+    async getAppSettings(): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAppSettings();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAppSettings();
+            return result;
+        }
+    }
+    async saveAppSettings(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                await this.actor.saveAppSettings(arg0);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            await this.actor.saveAppSettings(arg0);
         }
     }
     async getDeliveries(arg0: string): Promise<Array<DeliveryEntry>> {
