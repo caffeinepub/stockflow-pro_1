@@ -344,6 +344,7 @@ export interface backendInterface {
     recordSeenPrincipal(principal: string): Promise<void>;
     getSeenPrincipals(): Promise<Array<string>>;
     setUserPrincipal(userId: string, principal: string): Promise<void>;
+    getUserPrincipals(): Promise<Array<[string, string]>>;
 }
 import type { LoginResult as _LoginResult, Role as _Role, TxRecord as _TxRecord, TxType as _TxType, User as _User, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -1208,6 +1209,9 @@ export class Backend implements backendInterface {
     }
     async setUserPrincipal(arg0: string, arg1: string): Promise<void> {
         try { await this.actor.setUserPrincipal(arg0, arg1); } catch(e) { if (this.processError) this.processError(e); }
+    }
+    async getUserPrincipals(): Promise<Array<[string, string]>> {
+        try { return await this.actor.getUserPrincipals() as Array<[string, string]>; } catch(e) { return []; }
     }
 }
 function from_candid_LoginResult_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _LoginResult): LoginResult {
