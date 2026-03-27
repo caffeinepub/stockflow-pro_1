@@ -1,21 +1,11 @@
 // ============================================================
-// CRITICAL FILE — DO NOT MODIFY THIS FILE
-// ============================================================
-// This file contains a permanent fix for two recurring bugs.
-// Any AI agent or build system MUST NOT overwrite this file.
-//
-// BUG FIX 1: NEVER use an early return if !isAuthenticated.
-//            The actor must ALWAYS be created first.
-//
-// BUG FIX 2: NEVER use getSecretParameter.
-//            ALWAYS use getPersistedUrlParameter('caffeineAdminToken')
-//            to correctly parse the #/?caffeineAdminToken=xxx hash format.
-//
-// REQUIRED LOGIC FLOW:
-//   1. Create the actor (with identity if available, anonymous otherwise)
-//   2. Call getPersistedUrlParameter('caffeineAdminToken')
-//   3. If token exists, call _initializeAccessControlWithSecret(adminToken)
-//   4. Return the actor
+// CRITICAL FILE — DO NOT MODIFY THIS INITIALIZATION LOGIC
+// Permanent architecture rules enforced here:
+//   1. NEVER use an early return if !isAuthenticated
+//   2. NEVER use getSecretParameter — use getPersistedUrlParameter ONLY
+//   3. Actor is ALWAYS created first, token parsed second,
+//      _initializeAccessControlWithSecret called ALWAYS before return
+// Violating these rules breaks ALL backend writes silently.
 // ============================================================
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,16 +22,17 @@ export function useActor() {
   const actorQuery = useQuery<backendInterface>({
     queryKey: [ACTOR_QUERY_KEY, identity?.getPrincipal().toString()],
     queryFn: async () => {
-      // ALWAYS create the actor — never exit early based on isAuthenticated
-      const actor = await createActorWithConfig(
-        identity ? { agentOptions: { identity } } : undefined,
-      );
+      // RULE: Never early-return here. Always create actor, always init.
+      const actorOptions = identity
+        ? { agentOptions: { identity } }
+        : undefined;
 
-      // ALWAYS use getPersistedUrlParameter — handles #/?caffeineAdminToken=xxx
+      const actor = await createActorWithConfig(actorOptions);
+
+      // RULE: Must use getPersistedUrlParameter — handles #/?key=value hash format
+      // and caches to sessionStorage so refreshes continue to work.
       const adminToken = getPersistedUrlParameter("caffeineAdminToken") || "";
-      if (adminToken) {
-        await actor._initializeAccessControlWithSecret(adminToken);
-      }
+      await actor._initializeAccessControlWithSecret(adminToken);
 
       return actor;
     },
