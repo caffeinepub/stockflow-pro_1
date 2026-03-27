@@ -248,6 +248,8 @@ export interface _SERVICE {
     [string, string, string, Role, Array<string>],
     undefined
   >,
+  'recordSeenPrincipal' : ActorMethod<[string], undefined>,
+  'getSeenPrincipals' : ActorMethod<[], Array<string>>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

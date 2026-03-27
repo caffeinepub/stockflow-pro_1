@@ -6,9 +6,9 @@
 // RULES (enforced for all future builds):
 //   1. NEVER use an early return if !isAuthenticated
 //   2. NEVER use getSecretParameter — always use getPersistedUrlParameter
-//   3. Only call _initializeAccessControlWithSecret when token is NON-EMPTY.
-//      Empty-token calls FAIL silently and leave the principal unregistered,
-//      causing all writes to be rejected by the Caffeine platform.
+//   3. ALWAYS call _initializeAccessControlWithSecret unconditionally.
+//      Even with an empty token — the try/catch handles failures.
+//      Skipping the call means the principal is NEVER registered and ALL writes fail.
 //   4. ALWAYS persist the admin token to localStorage so it survives across
 //      tabs, refreshes, and Internet Identity redirects.
 //   5. This file must NOT import from useActor.ts
@@ -68,22 +68,24 @@ export function useActor() {
 
       const adminToken = getAdminToken();
 
-      if (adminToken) {
-        // RULE: Only call _initializeAccessControlWithSecret when token is present.
-        // Calling with an empty token throws, principal stays unregistered, writes fail.
-        try {
-          await actor._initializeAccessControlWithSecret(adminToken);
-          console.log(
-            "[useCustomActor] _initializeAccessControlWithSecret SUCCESS. principal:",
-            identity?.getPrincipal().toString() ?? "anon",
-          );
-        } catch (e) {
-          console.error(
-            "[useCustomActor] _initializeAccessControlWithSecret FAILED — " +
-              "this will block all writes. Error:",
-            e,
-          );
-        }
+      // RULE: Always call _initializeAccessControlWithSecret — unconditionally.
+      // This registers the caller's principal with the Caffeine platform.
+      // Without this call, ALL write calls (addTransitEntry, saveInward, etc.) are rejected.
+      // The try/catch ensures a failure here does NOT prevent the actor from being returned.
+      try {
+        await actor._initializeAccessControlWithSecret(adminToken);
+        console.log(
+          "[useCustomActor] _initializeAccessControlWithSecret SUCCESS. principal:",
+          identity?.getPrincipal().toString() ?? "anon",
+          "| token present:",
+          !!adminToken,
+        );
+      } catch (e) {
+        console.warn(
+          "[useCustomActor] _initializeAccessControlWithSecret failed (writes may be blocked):",
+          e,
+        );
+        // Do NOT rethrow — actor is still returned so reads work
       }
 
       lastActorRef.current = actor;
