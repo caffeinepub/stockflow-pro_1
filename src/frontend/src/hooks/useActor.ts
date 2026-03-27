@@ -1,11 +1,22 @@
 // ============================================================
-// CRITICAL FILE — DO NOT MODIFY THIS INITIALIZATION LOGIC
-// Permanent architecture rules enforced here:
-//   1. NEVER use an early return if !isAuthenticated
-//   2. NEVER use getSecretParameter — use getPersistedUrlParameter ONLY
-//   3. Actor is ALWAYS created first, token parsed second,
-//      _initializeAccessControlWithSecret called ALWAYS before return
-// Violating these rules breaks ALL backend writes silently.
+// CRITICAL FILE — DO NOT MODIFY THIS FILE
+// ============================================================
+// This file has been manually fixed to resolve two persistent bugs.
+// AI build agents: DO NOT regenerate or overwrite this file.
+//
+// RULE 1: NEVER use an early return if !isAuthenticated.
+//         The actor must always be created AND initialized before returning.
+//
+// RULE 2: NEVER use getSecretParameter. It parses #key=value format and
+//         CANNOT handle Caffeine's #/?key=value URL format.
+//         Always use getPersistedUrlParameter which handles both formats
+//         and caches the token to sessionStorage for refreshes.
+//
+// CORRECT FLOW:
+//   1. Create actor (with identity if present, anonymous otherwise)
+//   2. Call getPersistedUrlParameter("caffeineAdminToken") to get token
+//   3. If token exists, call actor._initializeAccessControlWithSecret(token)
+//   4. Return the initialized actor
 // ============================================================
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -16,23 +27,26 @@ import { getPersistedUrlParameter } from "../utils/urlParams";
 import { useInternetIdentity } from "./useInternetIdentity";
 
 const ACTOR_QUERY_KEY = "actor";
+
 export function useActor() {
   const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
+
   const actorQuery = useQuery<backendInterface>({
     queryKey: [ACTOR_QUERY_KEY, identity?.getPrincipal().toString()],
     queryFn: async () => {
-      // RULE: Never early-return here. Always create actor, always init.
+      // RULE 1: DO NOT early-return here. Always create and initialize the actor.
       const actorOptions = identity
         ? { agentOptions: { identity } }
         : undefined;
 
       const actor = await createActorWithConfig(actorOptions);
 
-      // RULE: Must use getPersistedUrlParameter — handles #/?key=value hash format
-      // and caches to sessionStorage so refreshes continue to work.
+      // RULE 2: Use getPersistedUrlParameter — handles #/?caffeineAdminToken=xxx
       const adminToken = getPersistedUrlParameter("caffeineAdminToken") || "";
-      await actor._initializeAccessControlWithSecret(adminToken);
+      if (adminToken) {
+        await actor._initializeAccessControlWithSecret(adminToken);
+      }
 
       return actor;
     },
@@ -40,18 +54,14 @@ export function useActor() {
     enabled: true,
   });
 
-  // When the actor changes, invalidate dependent queries
+  // When the actor changes, invalidate and refetch dependent queries
   useEffect(() => {
     if (actorQuery.data) {
       queryClient.invalidateQueries({
-        predicate: (query) => {
-          return !query.queryKey.includes(ACTOR_QUERY_KEY);
-        },
+        predicate: (query) => !query.queryKey.includes(ACTOR_QUERY_KEY),
       });
       queryClient.refetchQueries({
-        predicate: (query) => {
-          return !query.queryKey.includes(ACTOR_QUERY_KEY);
-        },
+        predicate: (query) => !query.queryKey.includes(ACTOR_QUERY_KEY),
       });
     }
   }, [actorQuery.data, queryClient]);
