@@ -188,6 +188,8 @@ actor {
   stable var sales             : [SaleEntry]        = [];
   stable var txHistory         : [TxRecord]         = [];
   stable var appSettingsBlob   : Text               = "";
+  stable var seenPrincipals    : [Text]             = [];
+  stable var userPrincipals    : [(Text, Text)]      = [];
 
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -717,6 +719,37 @@ actor {
 
   public func saveAppSettings(blob : Text) : async () {
     appSettingsBlob := blob
+  };
+
+
+  // ---- Principal Management ----
+
+  public func recordSeenPrincipal(principal : Text) : async () {
+    let exists = Array.find(seenPrincipals, func(p : Text) : Bool { p == principal });
+    switch (exists) {
+      case null { seenPrincipals := Array.append(seenPrincipals, [principal]) };
+      case _ {};
+    };
+  };
+
+  public func getSeenPrincipals() : async [Text] {
+    seenPrincipals
+  };
+
+  public func setUserPrincipal(userId : Text, principal : Text) : async () {
+    let existing = Array.find(userPrincipals, func(up : (Text, Text)) : Bool { up.0 == userId });
+    switch (existing) {
+      case null { userPrincipals := Array.append(userPrincipals, [(userId, principal)]) };
+      case _ {
+        userPrincipals := Array.map<(Text, Text), (Text, Text)>(userPrincipals, func(up) {
+          if (up.0 == userId) (userId, principal) else up
+        });
+      };
+    };
+  };
+
+  public func getUserPrincipals() : async [(Text, Text)] {
+    userPrincipals
   };
 
 };

@@ -185,6 +185,8 @@ function AddFieldRow({
 
 function SettingsTab({
   identityPrincipal,
+  seenPrincipals = [],
+  userPrincipals = {},
   users,
   setUsers,
   categories,
@@ -235,6 +237,8 @@ function SettingsTab({
   setCustomTabFields,
 }: {
   identityPrincipal?: string;
+  seenPrincipals?: string[];
+  userPrincipals?: Record<string, string>;
   users: AppUser[];
   setUsers: React.Dispatch<React.SetStateAction<AppUser[]>>;
   categories: Category[];
@@ -475,6 +479,75 @@ function SettingsTab({
               </div>
             </form>
           </div>
+          {seenPrincipals && seenPrincipals.length > 0 && (
+            <div className="bg-white border rounded-[2rem] p-6 shadow-sm">
+              <h4 className="font-black text-xs uppercase tracking-widest text-gray-400 mb-4">
+                Seen Identities ({seenPrincipals.length})
+              </h4>
+              <p className="text-[9px] text-gray-400 mb-4 font-medium">
+                All Internet Identity principals that have ever logged into this
+                app.
+              </p>
+              <div className="space-y-2">
+                {seenPrincipals.map((p) => (
+                  <div
+                    key={p}
+                    className="flex items-center justify-between gap-3 bg-gray-50 rounded-xl px-4 py-2"
+                  >
+                    <span className="font-mono text-[9px] text-gray-600 flex-1 truncate">
+                      {p}
+                      {userPrincipals &&
+                        Object.entries(userPrincipals).find(
+                          ([, v]) => v === p,
+                        ) && (
+                          <span className="ml-2 text-blue-500 font-black text-[8px] uppercase">
+                            linked to{" "}
+                            {
+                              Object.entries(userPrincipals).find(
+                                ([, v]) => v === p,
+                              )?.[0]
+                            }
+                          </span>
+                        )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewUser((prev) => ({ ...prev, principal: p }));
+                        showNotification("Principal copied to form");
+                      }}
+                      className="flex-none text-[8px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded-lg"
+                    >
+                      Use in form
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigator.clipboard
+                          .writeText(p)
+                          .then(() => showNotification("Copied!"))
+                      }
+                      className="flex-none text-gray-400 hover:text-gray-700"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="10"
+                        height="10"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-hidden="true"
+                      >
+                        <rect x="9" y="9" width="13" height="13" rx="2" />
+                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -795,6 +868,28 @@ function SettingsTab({
                   <option value="admin">Admin</option>
                   <option value="supplier">Supplier</option>
                 </select>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={newUser.principal || ""}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, principal: e.target.value })
+                    }
+                    className="w-full border rounded-2xl p-4 pr-32 outline-none font-mono text-xs bg-gray-50"
+                    placeholder="Internet Identity Principal (optional)"
+                  />
+                  {identityPrincipal && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNewUser({ ...newUser, principal: identityPrincipal })
+                      }
+                      className="absolute right-3 top-1/2 -translate-y-1/2 bg-blue-600 text-white text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg"
+                    >
+                      Use my identity
+                    </button>
+                  )}
+                </div>
                 <button
                   type="submit"
                   className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-xs shadow-lg hover:bg-blue-700"

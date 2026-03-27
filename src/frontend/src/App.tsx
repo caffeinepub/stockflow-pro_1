@@ -361,6 +361,16 @@ export default function App() {
     isInitializing: iiInitializing,
   } = useInternetIdentity();
 
+  // Record seen principal when II identity is available
+  useEffect(() => {
+    if (!actor || !identity) return;
+    const principal = identity.getPrincipal().toText();
+    (actor as any).recordSeenPrincipal(principal).catch(() => {});
+    setSeenPrincipals((prev) =>
+      prev.includes(principal) ? prev : [...prev, principal],
+    );
+  }, [actor, identity]);
+
   // Load persisted UI config once from localStorage
   const savedConfig = (() => {
     try {
@@ -420,6 +430,10 @@ export default function App() {
     { username: "staff", password: "password", role: "staff" },
     { username: "supplier", password: "password", role: "supplier" },
   ]);
+  const [seenPrincipals, setSeenPrincipals] = useState<string[]>([]);
+  const [userPrincipals, setUserPrincipals] = useState<Record<string, string>>(
+    {},
+  );
   const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
     try {
       const saved = localStorage.getItem("stockflow_user");
@@ -653,6 +667,8 @@ export default function App() {
           backendTransfers,
           backendSales,
           backendAppSettings,
+          backendSeenPrincipals,
+          backendUserPrincipals,
         ] = await Promise.all([
           (actor as any).getTransitEntries(resolvedBusinessId),
           (actor as any).getQueueEntries(resolvedBusinessId),
@@ -663,7 +679,25 @@ export default function App() {
           (actor as any).getTransfers(resolvedBusinessId),
           (actor as any).getSales(resolvedBusinessId),
           (actor as any).getAppSettings(),
+          (actor as any).getSeenPrincipals().catch(() => []),
+          (actor as any).getUserPrincipals().catch(() => []),
         ]);
+        if (
+          Array.isArray(backendSeenPrincipals) &&
+          backendSeenPrincipals.length > 0
+        ) {
+          setSeenPrincipals(backendSeenPrincipals as string[]);
+        }
+        if (
+          Array.isArray(backendUserPrincipals) &&
+          backendUserPrincipals.length > 0
+        ) {
+          const map: Record<string, string> = {};
+          for (const [uid, p] of backendUserPrincipals as [string, string][]) {
+            map[uid] = p;
+          }
+          setUserPrincipals(map);
+        }
         setTransitGoods(
           (backendTransit as BackendTransitEntry[]).map(fromBackendTransit),
         );
@@ -780,6 +814,10 @@ export default function App() {
           u.assignedBusinessIds || [],
         )
         .catch(handleWriteError("write"));
+      if (u.principal) {
+        (actor as any).setUserPrincipal(id, u.principal).catch(() => {});
+        setUserPrincipals((prev) => ({ ...prev, [id]: u.principal! }));
+      }
     }
     for (const u of deleted) {
       const backendId = (u as any)._backendId || u.username;
@@ -796,6 +834,15 @@ export default function App() {
           u.assignedBusinessIds || [],
         )
         .catch(handleWriteError("write"));
+      if (u.principal !== undefined) {
+        const principalVal = u.principal || "";
+        if (principalVal) {
+          (actor as any)
+            .setUserPrincipal(backendId, principalVal)
+            .catch(() => {});
+          setUserPrincipals((prev) => ({ ...prev, [backendId]: principalVal }));
+        }
+      }
     }
   };
 
@@ -2005,6 +2052,8 @@ export default function App() {
             {activeTab === "settings" && currentUser.role === "admin" && (
               <SettingsTab
                 identityPrincipal={identity?.getPrincipal().toText()}
+                seenPrincipals={seenPrincipals}
+                userPrincipals={userPrincipals}
                 users={users}
                 setUsers={setUsersWithBackend}
                 categories={categories}
