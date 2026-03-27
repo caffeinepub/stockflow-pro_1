@@ -59,7 +59,7 @@ import type {
   TransferEntry,
   TxRecord,
 } from "./declarations/backend.did";
-import { useActor } from "./hooks/useActor";
+import { useActor } from "./hooks/useCustomActor";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import type {
   AppUser,
