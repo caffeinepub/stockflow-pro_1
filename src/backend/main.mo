@@ -454,6 +454,7 @@ actor {
         createdAt    = entry.savedAt;
       };
       txHistory := Array.append(txHistory, [tx]);
+      applyInventoryAddition(entry.businessId, item);
     };
   };
 

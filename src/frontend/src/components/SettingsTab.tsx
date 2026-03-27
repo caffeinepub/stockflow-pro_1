@@ -184,6 +184,7 @@ function AddFieldRow({
 }
 
 function SettingsTab({
+  identityPrincipal,
   users,
   setUsers,
   categories,
@@ -233,6 +234,7 @@ function SettingsTab({
   customTabFields = {},
   setCustomTabFields,
 }: {
+  identityPrincipal?: string;
   users: AppUser[];
   setUsers: React.Dispatch<React.SetStateAction<AppUser[]>>;
   categories: Category[];
@@ -312,6 +314,7 @@ function SettingsTab({
     username: "",
     password: "",
     role: "staff",
+    principal: "",
   });
   const [editUser, setEditUser] = useState<{ oldName: string } | null>(null);
   const [editTarget, setEditTarget] = useState<{
@@ -337,7 +340,7 @@ function SettingsTab({
       setUsers((prev) => [...prev, newUser]);
       showNotification("User Created");
     }
-    setNewUser({ username: "", password: "", role: "staff" });
+    setNewUser({ username: "", password: "", role: "staff", principal: "" });
   };
 
   const handleUpdateColumn = (e: React.FormEvent) => {
@@ -729,168 +732,228 @@ function SettingsTab({
       )}
 
       {activeSub === "users" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm">
-            <h4 className="font-black text-xs uppercase tracking-widest text-gray-400 mb-6">
-              {editUser ? "Edit User" : "Create User"}
-            </h4>
-            <form onSubmit={handleSaveUser} className="space-y-4">
-              <input
-                required
-                type="text"
-                value={newUser.username}
-                onChange={(e) =>
-                  setNewUser({ ...newUser, username: e.target.value })
-                }
-                className="w-full border rounded-2xl p-4 outline-none font-bold bg-gray-50"
-                placeholder="Username"
-              />
-              <input
-                required
-                type="text"
-                value={newUser.password}
-                onChange={(e) =>
-                  setNewUser({ ...newUser, password: e.target.value })
-                }
-                className="w-full border rounded-2xl p-4 outline-none font-bold bg-gray-50"
-                placeholder="Password"
-              />
-              <select
-                value={newUser.role}
-                onChange={(e) =>
-                  setNewUser({
-                    ...newUser,
-                    role: e.target.value as AppUser["role"],
-                  })
-                }
-                className="w-full border rounded-2xl p-4 font-black uppercase text-xs tracking-widest bg-gray-50"
-              >
-                <option value="staff">Staff</option>
-                <option value="admin">Admin</option>
-                <option value="supplier">Supplier</option>
-              </select>
-              <button
-                type="submit"
-                className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-xs shadow-lg hover:bg-blue-700"
-              >
-                {editUser ? "Save Updates" : "Activate Login"}
-              </button>
-              {editUser && (
+        <div className="space-y-6">
+          {identityPrincipal && (
+            <div className="bg-blue-50 border border-blue-200 rounded-[2rem] p-5">
+              <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 mb-2">
+                Your Internet Identity Principal (logged in)
+              </p>
+              <div className="flex items-center gap-3">
+                <p className="font-mono text-xs text-blue-900 break-all flex-1">
+                  {identityPrincipal}
+                </p>
                 <button
                   type="button"
                   onClick={() => {
-                    setEditUser(null);
-                    setNewUser({ username: "", password: "", role: "staff" });
+                    navigator.clipboard.writeText(identityPrincipal);
+                    showNotification("Principal copied!");
                   }}
-                  className="w-full text-gray-400 font-bold text-[10px] uppercase tracking-widest py-2"
+                  className="flex-none bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-xl"
                 >
-                  Cancel Edit
+                  Copy
                 </button>
-              )}
-            </form>
-          </div>
-          <div className="space-y-3">
-            {users.map((u) => (
-              <div
-                key={u.username}
-                className="bg-white border p-5 rounded-[2rem] flex justify-between items-center font-bold shadow-sm"
-              >
-                <div className="flex-1">
-                  <p className="text-lg font-black tracking-tight text-gray-800">
-                    {u.username}
-                  </p>
-                  <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mt-1">
-                    {u.role}
-                  </p>
-                  {u.role !== "admin" && (
-                    <div className="mt-2">
-                      <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">
-                        Business Access
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {businesses.map((b) => {
-                          const checked =
-                            !u.assignedBusinessIds ||
-                            u.assignedBusinessIds.length === 0 ||
-                            u.assignedBusinessIds.includes(b.id);
-                          return (
-                            <label
-                              key={b.id}
-                              className="flex items-center gap-1 text-[10px] font-bold cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(e) => {
-                                  setUsers((prev) =>
-                                    prev.map((x) => {
-                                      if (x.username !== u.username) return x;
-                                      const current =
-                                        x.assignedBusinessIds &&
-                                        x.assignedBusinessIds.length > 0
-                                          ? x.assignedBusinessIds
-                                          : businesses.map((biz) => biz.id);
-                                      if (e.target.checked) {
-                                        return {
-                                          ...x,
-                                          assignedBusinessIds: [
-                                            ...new Set([...current, b.id]),
-                                          ],
-                                        };
-                                      }
-                                      const next = current.filter(
-                                        (id) => id !== b.id,
-                                      );
-                                      return {
-                                        ...x,
-                                        assignedBusinessIds: next,
-                                      };
-                                    }),
-                                  );
-                                }}
-                                className="rounded"
-                              />
-                              {b.name}
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-2 flex-shrink-0">
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm">
+              <h4 className="font-black text-xs uppercase tracking-widest text-gray-400 mb-6">
+                {editUser ? "Edit User" : "Create User"}
+              </h4>
+              <form onSubmit={handleSaveUser} className="space-y-4">
+                <input
+                  required
+                  type="text"
+                  value={newUser.username}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, username: e.target.value })
+                  }
+                  className="w-full border rounded-2xl p-4 outline-none font-bold bg-gray-50"
+                  placeholder="Username"
+                />
+                <input
+                  required
+                  type="text"
+                  value={newUser.password}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, password: e.target.value })
+                  }
+                  className="w-full border rounded-2xl p-4 outline-none font-bold bg-gray-50"
+                  placeholder="Password"
+                />
+                <select
+                  value={newUser.role}
+                  onChange={(e) =>
+                    setNewUser({
+                      ...newUser,
+                      role: e.target.value as AppUser["role"],
+                    })
+                  }
+                  className="w-full border rounded-2xl p-4 font-black uppercase text-xs tracking-widest bg-gray-50"
+                >
+                  <option value="staff">Staff</option>
+                  <option value="admin">Admin</option>
+                  <option value="supplier">Supplier</option>
+                </select>
+                <button
+                  type="submit"
+                  className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-xs shadow-lg hover:bg-blue-700"
+                >
+                  {editUser ? "Save Updates" : "Activate Login"}
+                </button>
+                {editUser && (
                   <button
                     type="button"
                     onClick={() => {
-                      setEditUser({ oldName: u.username });
+                      setEditUser(null);
                       setNewUser({
-                        username: u.username,
-                        password: u.password,
-                        role: u.role,
+                        username: "",
+                        password: "",
+                        role: "staff",
+                        principal: "",
                       });
                     }}
-                    className="text-blue-500 bg-blue-50 p-3 hover:bg-blue-100 rounded-xl"
+                    className="w-full text-gray-400 font-bold text-[10px] uppercase tracking-widest py-2"
                   >
-                    <Edit size={16} />
+                    Cancel Edit
                   </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setConfirmDialog({
-                        message: "Delete Account?",
-                        onConfirm: () =>
-                          setUsers((prev) =>
-                            prev.filter((x) => x.username !== u.username),
-                          ),
-                      })
-                    }
-                    className="text-red-400 bg-red-50 p-3 hover:bg-red-100 rounded-xl"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                )}
+              </form>
+            </div>
+            <div className="space-y-3">
+              {users.map((u) => (
+                <div
+                  key={u.username}
+                  className="bg-white border p-5 rounded-[2rem] flex justify-between items-center font-bold shadow-sm"
+                >
+                  <div className="flex-1">
+                    <p className="text-lg font-black tracking-tight text-gray-800">
+                      {u.username}
+                    </p>
+                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mt-1">
+                      {u.role}
+                    </p>
+                    {u.principal && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <p className="font-mono text-[8px] text-gray-400 truncate max-w-[160px]">
+                          {u.principal}
+                        </p>
+                        <button
+                          type="button"
+                          aria-label="Copy principal"
+                          onClick={() => {
+                            navigator.clipboard.writeText(u.principal!);
+                            showNotification("Copied!");
+                          }}
+                          className="text-gray-400 hover:text-blue-600"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="10"
+                            height="10"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            aria-hidden="true"
+                          >
+                            <rect x="9" y="9" width="13" height="13" rx="2" />
+                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                    {u.role !== "admin" && (
+                      <div className="mt-2">
+                        <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-1">
+                          Business Access
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {businesses.map((b) => {
+                            const checked =
+                              !u.assignedBusinessIds ||
+                              u.assignedBusinessIds.length === 0 ||
+                              u.assignedBusinessIds.includes(b.id);
+                            return (
+                              <label
+                                key={b.id}
+                                className="flex items-center gap-1 text-[10px] font-bold cursor-pointer"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    setUsers((prev) =>
+                                      prev.map((x) => {
+                                        if (x.username !== u.username) return x;
+                                        const current =
+                                          x.assignedBusinessIds &&
+                                          x.assignedBusinessIds.length > 0
+                                            ? x.assignedBusinessIds
+                                            : businesses.map((biz) => biz.id);
+                                        if (e.target.checked) {
+                                          return {
+                                            ...x,
+                                            assignedBusinessIds: [
+                                              ...new Set([...current, b.id]),
+                                            ],
+                                          };
+                                        }
+                                        const next = current.filter(
+                                          (id) => id !== b.id,
+                                        );
+                                        return {
+                                          ...x,
+                                          assignedBusinessIds: next,
+                                        };
+                                      }),
+                                    );
+                                  }}
+                                  className="rounded"
+                                />
+                                {b.name}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditUser({ oldName: u.username });
+                        setNewUser({
+                          username: u.username,
+                          password: u.password,
+                          role: u.role,
+                          principal: u.principal || "",
+                        });
+                      }}
+                      className="text-blue-500 bg-blue-50 p-3 hover:bg-blue-100 rounded-xl"
+                    >
+                      <Edit size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setConfirmDialog({
+                          message: "Delete Account?",
+                          onConfirm: () =>
+                            setUsers((prev) =>
+                              prev.filter((x) => x.username !== u.username),
+                            ),
+                        })
+                      }
+                      className="text-red-400 bg-red-50 p-3 hover:bg-red-100 rounded-xl"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}

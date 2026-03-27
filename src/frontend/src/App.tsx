@@ -1095,11 +1095,41 @@ export default function App() {
     setTransactions(next);
   };
 
-  // setDeliveryRecordsWithBackend
+  // setDeliveryRecordsWithBackend - syncs new deliveries to backend
+  const deliveryRecordsRef2 = deliveryRecordsRef;
   const setDeliveryRecordsWithBackend: React.Dispatch<
     React.SetStateAction<DeliveryRecord[]>
   > = (updaterOrArray) => {
-    setDeliveryRecords(updaterOrArray);
+    const prev = deliveryRecordsRef2.current;
+    const next =
+      typeof updaterOrArray === "function"
+        ? (updaterOrArray as (p: DeliveryRecord[]) => DeliveryRecord[])(prev)
+        : updaterOrArray;
+    setDeliveryRecords(next);
+    if (!actor) return;
+    const added = next.filter((d) => !prev.find((p) => p.id === d.id));
+    for (const d of added) {
+      const entry = {
+        id: d.id,
+        businessId: d.businessId || "",
+        deliveryType: d.type,
+        biltyNumber: d.biltyNo || "",
+        customerName: d.customerName,
+        customerPhone: d.customerPhone || "",
+        items: d.items.map((i) => ({
+          category: i.category,
+          itemName: i.itemName,
+          subCategory: i.subCategory || "",
+          qty: BigInt(i.qty),
+          godownId: d.sourceGodown,
+        })),
+        deliveredBy: d.deliveredBy,
+        createdAt: BigInt(new Date(d.deliveredAt).getTime()),
+      };
+      (actor as any)
+        .addDelivery(entry)
+        .catch(handleWriteError('"delivery restore"'));
+    }
   };
 
   const generateSku = (
@@ -1342,7 +1372,7 @@ export default function App() {
         if (data.customColumns) setCustomColumns(data.customColumns);
         if (data.categories) setCategoriesWithBackend(data.categories);
         if (data.users) setUsersWithBackend(data.users);
-        if (data.businesses) setBusinesses(data.businesses);
+        if (data.businesses) setBusinessesWithBackend(data.businesses);
         if (data.activeBusinessId) setActiveBusinessId(data.activeBusinessId);
         if (data.deliveryRecords)
           setDeliveryRecordsWithBackend(data.deliveryRecords);
@@ -1967,6 +1997,7 @@ export default function App() {
             )}
             {activeTab === "settings" && currentUser.role === "admin" && (
               <SettingsTab
+                identityPrincipal={identity?.getPrincipal().toText()}
                 users={users}
                 setUsers={setUsersWithBackend}
                 categories={categories}

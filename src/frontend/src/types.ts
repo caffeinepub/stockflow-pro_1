@@ -18,6 +18,7 @@ export interface AppUser {
   password: string;
   role: "admin" | "staff" | "supplier";
   assignedBusinessIds?: string[];
+  principal?: string; // linked Internet Identity principal
 }
 export interface DeliveryRecord {
   id: string;
