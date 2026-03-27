@@ -6,7 +6,10 @@
 // RULES (enforced for all future builds):
 //   1. NEVER use an early return if !isAuthenticated
 //   2. NEVER use getSecretParameter — always use getPersistedUrlParameter
-//   3. Always call _initializeAccessControlWithSecret BEFORE returning
+//   3. Always call _initializeAccessControlWithSecret UNCONDITIONALLY (even with empty token)
+//      — this registers the caller's principal with the Caffeine platform.
+//      Guarding with `if (adminToken)` causes writes to be rejected for users
+//      who open the app without the token in the URL.
 //   4. This file must NOT import from useActor.ts
 //   5. ALWAYS use placeholderData: (prev) => prev to prevent actor becoming null
 //      during Internet Identity transitions — this is critical for write reliability
@@ -41,16 +44,16 @@ export function useActor() {
       // RULE: Use getPersistedUrlParameter — handles #/?caffeineAdminToken=xxx format
       const adminToken = getPersistedUrlParameter("caffeineAdminToken") || "";
 
-      // Only call init if token exists — calling with empty string throws an error
-      if (adminToken) {
-        try {
-          await actor._initializeAccessControlWithSecret(adminToken);
-        } catch (e) {
-          console.warn(
-            "[useCustomActor] _initializeAccessControlWithSecret failed:",
-            e,
-          );
-        }
+      // CRITICAL: Call _initializeAccessControlWithSecret UNCONDITIONALLY.
+      // Do NOT guard with `if (adminToken)` — the Caffeine platform requires this call
+      // to register the caller's principal. Skipping it causes ALL writes to be rejected.
+      try {
+        await actor._initializeAccessControlWithSecret(adminToken);
+      } catch (e) {
+        console.warn(
+          "[useCustomActor] _initializeAccessControlWithSecret failed:",
+          e,
+        );
       }
 
       // Store as last known good actor
