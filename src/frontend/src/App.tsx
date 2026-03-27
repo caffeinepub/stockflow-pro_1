@@ -1037,7 +1037,14 @@ export default function App() {
 
   const handleWriteError = (label: string) => (err: unknown) => {
     console.error(err);
-    showNotification(`Save failed: ${label}. Please try again.`, "error");
+    // Extract actual error message for user-visible diagnostics
+    let errMsg = "";
+    if (err && typeof err === "object" && "message" in err) {
+      errMsg = String((err as { message: unknown }).message).slice(0, 120);
+    } else {
+      errMsg = String(err).slice(0, 120);
+    }
+    showNotification(`Save failed (${label}): ${errMsg}`, "error");
   };
 
   // Persist UI config to localStorage on change

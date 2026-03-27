@@ -49,9 +49,15 @@ export function useActor() {
       // to register the caller's principal. Skipping it causes ALL writes to be rejected.
       try {
         await actor._initializeAccessControlWithSecret(adminToken);
+        console.log(
+          "[useCustomActor] _initializeAccessControlWithSecret SUCCESS. token present:",
+          !!adminToken,
+          "principal:",
+          identity?.getPrincipal().toString() ?? "anon",
+        );
       } catch (e) {
-        console.warn(
-          "[useCustomActor] _initializeAccessControlWithSecret failed:",
+        console.error(
+          "[useCustomActor] _initializeAccessControlWithSecret FAILED - this will block all writes!",
           e,
         );
       }
