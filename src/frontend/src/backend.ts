@@ -341,6 +341,9 @@ export interface backendInterface {
     updateTransitEntry(entry: TransitEntry): Promise<void>;
     updateTransportTracker(id: string, transport: string, trackingUrl: string): Promise<void>;
     updateUser(id: string, username: string, password: string, role: Role, businessIds: Array<string>): Promise<void>;
+    recordSeenPrincipal(principal: string): Promise<void>;
+    getSeenPrincipals(): Promise<Array<string>>;
+    setUserPrincipal(userId: string, principal: string): Promise<void>;
 }
 import type { LoginResult as _LoginResult, Role as _Role, TxRecord as _TxRecord, TxType as _TxType, User as _User, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -1196,6 +1199,15 @@ export class Backend implements backendInterface {
             const result = await this.actor.updateUser(arg0, arg1, arg2, to_candid_Role_n5(this._uploadFile, this._downloadFile, arg3), arg4);
             return result;
         }
+    }
+    async recordSeenPrincipal(arg0: string): Promise<void> {
+        try { await this.actor.recordSeenPrincipal(arg0); } catch(e) { if (this.processError) this.processError(e); }
+    }
+    async getSeenPrincipals(): Promise<Array<string>> {
+        try { return await this.actor.getSeenPrincipals() as Array<string>; } catch(e) { return []; }
+    }
+    async setUserPrincipal(arg0: string, arg1: string): Promise<void> {
+        try { await this.actor.setUserPrincipal(arg0, arg1); } catch(e) { if (this.processError) this.processError(e); }
     }
 }
 function from_candid_LoginResult_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _LoginResult): LoginResult {
